@@ -3,17 +3,26 @@
 import "./globals.css";
 import dynamic from "next/dynamic";
 import { SessionProvider } from "next-auth/react";
+import { Inter } from "next/font/google";
+import SilkBackground from "./components/layout/SilkBackground";
 
-// ✅ Dynamically import Sidebar without SSR
+const inter = Inter({
+  subsets: ["latin", "greek"],
+  variable: "--font-sans", // will fill the CSS variable we used above
+});
+
+//  Dynamically import Sidebar + Silk without SSR
 const Sidebar = dynamic(() => import("./components/Sidebar"), { ssr: false });
 
 export default function RootLayout({ children }) {
   return (
     <SessionProvider>
-      <html lang="en">
-        <body>
-          <Sidebar />
-          <main style={{ minHeight: "100vh", backgroundColor: "#f4f4f4" }}>{children}</main>
+      <html lang="en" className={inter.variable}>
+        <body>        
+            <Sidebar />
+            <main style={{ minHeight: "100vh", backgroundColor: "var(--color-bg)" }}>
+              {children}
+            </main>
         </body>
       </html>
     </SessionProvider>
