@@ -1,3 +1,4 @@
+import useDebounce from "@/lib/useDebounce";
 import React from "react";
 import {
   Box,
@@ -20,6 +21,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import AddIcon from "@mui/icons-material/Add";
+import CustomTextBox from "@/app/components/vTextBox";
 import { visuallyHidden } from "@mui/utils";
 
 function descendingComparator(a, b, orderBy) {
@@ -43,24 +46,18 @@ const headCells = [
   {
     id: "firstname",
     numeric: false,
-    disablePadding: true,
+    disablePadding: false,
     label: "First Name",
   },
   {
     id: "lastname",
     numeric: false,
-    disablePadding: true,
+    disablePadding: false,
     label: "Last Name",
   },
+  { id: "phone01", numeric: false, disablePadding: false, label: "Phone 01" },
+  { id: "phone02", numeric: false, disablePadding: false, label: "Phone 02" },
   { id: "email", numeric: false, disablePadding: false, label: "Email" },
-  { id: "phone", numeric: false, disablePadding: false, label: "Phone" },
-  { id: "age", numeric: true, disablePadding: false, label: "Age" },
-  {
-    id: "startedYear",
-    numeric: true,
-    disablePadding: false,
-    label: "Year",
-  },
   {
     id: "active",
     numeric: false,
@@ -98,7 +95,7 @@ function EnhancedTableHead(props) {
       >
         <TableCell padding="checkbox">
           <Checkbox
-            color="primary"
+            sx={{ color: "var(--color-shell-text)" }}
             indeterminate={numSelected > 0 && numSelected < rowCount}
             checked={rowCount > 0 && numSelected === rowCount}
             onChange={onSelectAllClick}
@@ -117,8 +114,20 @@ function EnhancedTableHead(props) {
                 ? "center"
                 : "left"
             }
-            padding={headCell.disablePadding ? "none" : "normal"}
+            padding="normal"
             sortDirection={orderBy === headCell.id ? order : false}
+            sx={{
+              width:
+                headCell.id === "firstname" || headCell.id === "lastname"
+                  ? "15%"
+                  : headCell.id === "phone01" || headCell.id === "phone02"
+                  ? "12.5%"
+                  : headCell.id === "email"
+                  ? "25%"
+                  : headCell.id === "active"
+                  ? "10%"
+                  : undefined,
+            }}
           >
             <TableSortLabel
               active={orderBy === headCell.id}
@@ -155,7 +164,14 @@ function EnhancedTableHead(props) {
   );
 }
 
-function EnhancedTableToolbar({ numSelected }) {
+function EnhancedTableToolbar({ numSelected, onAddCustomerClick, onDeleteCustomer, selected, onSearchChange }) {
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  React.useEffect(() => {
+    onSearchChange(debouncedSearchTerm);
+  }, [debouncedSearchTerm, onSearchChange]);
+
   return (
     <Toolbar
       sx={{
@@ -186,20 +202,37 @@ function EnhancedTableToolbar({ numSelected }) {
         </Typography>
       )}
 
+      <CustomTextBox
+        placeholder="Search customers..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        sx={{
+          minWidth: 200,
+          marginRight: 2,
+        }}
+      />
+
       {numSelected > 0 ? (
         <Tooltip title="Delete">
           <span>
-            <IconButton size="small">
+            <IconButton size="small" onClick={() => onDeleteCustomer(selected)}>
               <DeleteIcon fontSize="small" />
             </IconButton>
           </span>
         </Tooltip>
       ) : (
-        <Tooltip title="Filter list">
-          <IconButton size="small">
-            <FilterListIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Tooltip title="Add Customer">
+            <IconButton size="small" onClick={onAddCustomerClick}>
+              <AddIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Filter list">
+            <IconButton size="small">
+              <FilterListIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
       )}
     </Toolbar>
   );
@@ -210,12 +243,16 @@ export default function CustomersTableDesktop({
   loading,
   onRowClick, // called on double click
   onSelectionChange, // optional: gets array of selected IDs
+  onAddCustomerClick,
+  onDeleteCustomer, // new: function to call when delete is requested
+  selected, // new: currently selected customer IDs
+  onSearchChange, // new: handler for search term changes
 }) {
   const rows = customers || [];
 
   const [order, setOrder] = React.useState("asc");
   const [orderBy, setOrderBy] = React.useState("name");
-  const [selected, setSelected] = React.useState([]);
+
   const [page, setPage] = React.useState(0);
   const [dense, setDense] = React.useState(false);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
@@ -229,12 +266,10 @@ export default function CustomersTableDesktop({
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
       const newSelected = rows.map((n) => n.id);
-      setSelected(newSelected);
-      if (onSelectionChange) onSelectionChange(newSelected);
+      onSelectionChange(newSelected);
       return;
     }
-    setSelected([]);
-    if (onSelectionChange) onSelectionChange([]);
+    onSelectionChange([]);
   };
 
   const handleClick = (event, id) => {
@@ -253,8 +288,7 @@ export default function CustomersTableDesktop({
         selected.slice(selectedIndex + 1)
       );
     }
-    setSelected(newSelected);
-    if (onSelectionChange) onSelectionChange(newSelected);
+    onSelectionChange(newSelected);
   };
 
   const handleChangePage = (event, newPage) => {
@@ -270,7 +304,7 @@ export default function CustomersTableDesktop({
     setDense(event.target.checked);
   };
 
-  const isSelected = (id) => selected.indexOf(id) !== -1;
+  const isSelected = (id) => selected.includes(id);
 
   const emptyRows =
     page > 0 ? Math.max(0, (1 + page) * rowsPerPage - rows.length) : 0;
@@ -294,7 +328,13 @@ export default function CustomersTableDesktop({
           boxShadow: "none",
         }}
       >
-        <EnhancedTableToolbar numSelected={selected.length} />
+        <EnhancedTableToolbar
+          numSelected={selected.length}
+          onAddCustomerClick={onAddCustomerClick}
+          onDeleteCustomer={onDeleteCustomer}
+          selected={selected}
+          onSearchChange={onSearchChange}
+        />
 
         <TableContainer>
           <Table
@@ -342,6 +382,7 @@ export default function CustomersTableDesktop({
                     <TableCell padding="checkbox">
                       <Checkbox
                         color="primary"
+                        color="primary"
                         checked={isItemSelected}
                         inputProps={{
                           "aria-labelledby": labelId,
@@ -352,7 +393,8 @@ export default function CustomersTableDesktop({
                       component="th"
                       id={labelId}
                       scope="row"
-                      padding="none"
+                      padding="normal"
+                      sx={{ width: "15%" }}
                     >
                       {row.firstname}
                     </TableCell>
@@ -360,19 +402,15 @@ export default function CustomersTableDesktop({
                       component="th"
                       id={labelId}
                       scope="row"
-                      padding="none"
+                      padding="normal"
+                      sx={{ width: "15%" }}
                     >
                       {row.lastname}
                     </TableCell>
-                    <TableCell>{row.email}</TableCell>
-                    <TableCell>{row.phone}</TableCell>
-                    <TableCell align="right">
-                      {row.age != null ? row.age : "-"}
-                    </TableCell>
-                    <TableCell align="right">
-                      {row.startedYear != null ? row.startedYear : "-"}
-                    </TableCell>
-                    <TableCell align="center">
+                    <TableCell padding="normal" sx={{ width: "12.5%" }}>{row.phone01}</TableCell>
+                    <TableCell padding="normal" sx={{ width: "12.5%" }}>{row.phone02}</TableCell>
+                    <TableCell padding="normal" sx={{ width: "25%" }}>{row.email}</TableCell>
+                    <TableCell align="center" padding="normal" sx={{ width: "10%" }}>
                       {row.active === 1 || row.active === true ? "Yes" : "No"}
                     </TableCell>
                   </TableRow>
@@ -384,13 +422,13 @@ export default function CustomersTableDesktop({
                     height: (dense ? 33 : 53) * emptyRows,
                   }}
                 >
-                  <TableCell colSpan={7} />
+                  <TableCell colSpan={6} />
                 </TableRow>
               )}
               {!loading && rows.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={6}
                     align="center"
                     sx={{
                       color: "var(--color-text-muted)",

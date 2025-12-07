@@ -14,11 +14,13 @@ import {
 } from "@mui/material";
 
 import { useMessageHandler } from "@/lib/useMessageHandler";
+import useDebounce from "@/lib/useDebounce";
 
 import CustomTextBox from "@/app/components/vTextBox";
 import CustomButton from "@/app/components/vButton";
 import CustomMessage from "@/app/components/vMessage";
 import CheckAuth from "@/app/components/CheckAuth";
+import DeleteModal from "@/app/components/DeleteModal";
 
 import CustomersTableDesktop from "./CustomersTableDesktop";
 import CustomersListMobile from "./CustomersListMobile";
@@ -30,11 +32,26 @@ export default function CustomersPage() {
   const isMobile = useMediaQuery("(max-width:768px)");
 
   const [customers, setCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Add Customer modal
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [firstname, setFirstname] = useState("");
+  const [lastname, setLastname] = useState("");
+  const [phone01, setPhone01] = useState("");
+  const [phone02, setPhone02] = useState("");
+  const [email, setEmail] = useState("");
+  const [comments, setComments] = useState("");
+
+  // Delete Customer modal
+  const [openDeleteModal, setOpenDeleteModal] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
 
   const {
     message,
@@ -52,17 +69,34 @@ export default function CustomersPage() {
     }
   }, [session, status, router]);
 
-  // Fetch customers
-  useEffect(() => {
-    if (session?.user?.level === 100) {
-      fetchCustomers();
-    }
-  }, [session]);
+    // Fetch customers
+    useEffect(() => {
+        if (session?.user?.level === 100) {
+            fetchCustomers();
+        }
+    }, [session]);
+
+    // Filter customers
+    useEffect(() => {
+        if (debouncedSearchTerm) {
+            const filtered = customers.filter(customer =>
+                customer.firstname.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                customer.lastname.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                customer.email.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                customer.phone01.includes(debouncedSearchTerm) ||
+                customer.phone02.includes(debouncedSearchTerm)
+            );
+            setFilteredCustomers(filtered);
+        } else {
+            setFilteredCustomers(customers);
+        }
+    }, [debouncedSearchTerm, customers]);
 
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/cust");
+      const url = "/api/cust";
+      const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
         setCustomers(result.data);
@@ -88,14 +122,26 @@ export default function CustomersPage() {
       const res = await fetch("/api/cust", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({
+          firstname,
+          lastname,
+          phone01,
+          phone02,
+          email,
+          comments,
+        }),
       });
 
       const result = await res.json();
       if (result.success) {
-        showSuccess("New customer added with name: " + result.data.name);
+        showSuccess("New customer added: " + result.data.firstname + " " + result.data.lastname);
         setOpen(false);
-        setName("");
+        setFirstname("");
+        setLastname("");
+        setPhone01("");
+        setPhone02("");
+        setEmail("");
+        setComments("");
         await fetchCustomers();
       } else {
         showError("Error: " + (result.message || "Unknown error"));
@@ -105,6 +151,38 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteCustomer = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/cust/${customerToDelete}`, {
+        method: "DELETE",
+      });
+      const result = await res.json();
+      if (result.success) {
+        showSuccess("Customer deleted successfully.");
+        setOpenDeleteModal(false);
+        setCustomerToDelete(null);
+        await fetchCustomers();
+      } else {
+        showError("Error deleting customer: " + (result.message || "Unknown error"));
+      }
+    } catch (err) {
+      showError("Error: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmDelete = (id) => {
+    setCustomerToDelete(id);
+    setOpenDeleteModal(true);
+  };
+
+  const cancelDelete = () => {
+    setOpenDeleteModal(false);
+    setCustomerToDelete(null);
   };
 
   // While auth is resolving
@@ -131,17 +209,7 @@ export default function CustomersPage() {
           Customers
         </Typography>
 
-        <CustomButton
-          variant="contained"
-          onClick={() => setOpen(true)}
-          sx={{
-            backgroundColor: "var(--color-primary)",
-            "&:hover": { backgroundColor: "var(--color-primary-hover)" },
-            paddingX: 2.5,
-          }}
-        >
-          + Add
-        </CustomButton>
+
       </Stack>
 
       {/* Card wrapper for table/list */}
@@ -157,15 +225,21 @@ export default function CustomersPage() {
       >
         {isMobile ? (
           <CustomersListMobile
-            customers={customers}
+            customers={filteredCustomers}
             loading={loading}
             onRowClick={handleRowClick}
           />
         ) : (
           <CustomersTableDesktop
-            customers={customers}
+            customers={filteredCustomers}
             loading={loading}
             onRowClick={handleRowClick}
+            onAddCustomerClick={() => setOpen(true)}
+            onDeleteCustomer={(ids) => confirmDelete(ids.length === 1 ? ids[0] : ids)}
+            selected={selectedCustomers}
+            onSelectionChange={setSelectedCustomers}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
           />
         )}
       </Box>
@@ -175,7 +249,12 @@ export default function CustomersPage() {
         open={open}
         onClose={() => {
           setOpen(false);
-          setName("");
+          setFirstname("");
+          setLastname("");
+          setPhone01("");
+          setPhone02("");
+          setEmail("");
+          setComments("");
         }}
       >
         <Box
@@ -204,20 +283,59 @@ export default function CustomersPage() {
 
           <Stack spacing={2}>
             <CustomTextBox
-              label="Name"
-              name="name"
-              value={name}
+              label="First Name"
+              name="firstname"
+              value={firstname}
               fullWidth
               required
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setFirstname(e.target.value)}
               autoFocus
+            />
+            <CustomTextBox
+              label="Last Name"
+              name="lastname"
+              value={lastname}
+              fullWidth
+              required
+              onChange={(e) => setLastname(e.target.value)}
+            />
+            <CustomTextBox
+              label="Phone 01"
+              name="phone01"
+              value={phone01}
+              fullWidth
+              onChange={(e) => setPhone01(e.target.value)}
+            />
+            <CustomTextBox
+              label="Phone 02"
+              name="phone02"
+              value={phone02}
+              fullWidth
+              onChange={(e) => setPhone02(e.target.value)}
+            />
+            <CustomTextBox
+              label="Email"
+              name="email"
+              value={email}
+              fullWidth
+              required
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <CustomTextBox
+              label="Comments"
+              name="comments"
+              value={comments}
+              fullWidth
+              multiline
+              rows={3}
+              onChange={(e) => setComments(e.target.value)}
             />
 
             <CustomButton
               type="submit"
               variant="contained"
               onClick={handleAddCustomer}
-              disabled={loading || !name}
+              disabled={loading || !firstname || !lastname || !email}
               sx={{
                 backgroundColor: "var(--color-primary)",
                 "&:hover": { backgroundColor: "var(--color-primary-hover)" },
@@ -234,6 +352,13 @@ export default function CustomersPage() {
         type={messageType}
         message={message}
         onClose={closeMessage}
+      />
+
+      <DeleteModal
+        open={openDeleteModal}
+        onClose={cancelDelete}
+        onConfirm={handleDeleteCustomer}
+        itemName="customer"
       />
     </Container>
   );

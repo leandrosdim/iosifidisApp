@@ -1,5 +1,6 @@
 import { pool } from "@/lib/db";
 import { checkSession } from "@/lib/validateLevel";
+//check
 
 export async function GET(req, context) {
   const client = await pool.connect();
@@ -75,21 +76,37 @@ export async function POST(req) {
   }
 
   try {
-    const { name } = await req.json();
+    const { firstname, lastname, phone01, phone02, email, comments } = await req.json();
 
-    if (!name || name.trim() === "") {
+    if (!firstname || firstname.trim() === "") {
       return new Response(
-        JSON.stringify({ success: false, message: "Name is required." }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, message: "First name is required." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!lastname || lastname.trim() === "") {
+      return new Response(
+        JSON.stringify({ success: false, message: "Last name is required." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (!email || email.trim() === "") {
+      return new Response(
+        JSON.stringify({ success: false, message: "Email is required." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    // Basic email format validation
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Invalid email format." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
     const result = await client.query(
-      `INSERT INTO customers (lastname) VALUES ($1) RETURNING *`,
-      [name.trim()]
+      `INSERT INTO customers (firstname, lastname, phone01, phone02, email, comments, active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [firstname.trim(), lastname.trim(), phone01, phone02, email.trim(), comments, 1]
     );
 
     return new Response(
