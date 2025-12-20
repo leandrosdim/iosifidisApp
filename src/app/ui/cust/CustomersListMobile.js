@@ -1,4 +1,5 @@
-import { Box, Stack, Typography, Chip, LinearProgress } from "@mui/material";
+import { Box, Stack, Typography, Chip, LinearProgress, IconButton } from "@mui/material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 export default function CustomersListMobile({
   customers,
@@ -61,44 +62,46 @@ export default function CustomersListMobile({
                   color: "var(--color-text-main)",
                 }}
               >
-                {c.name}
+                {c.firstname} {c.lastname}
               </Typography>
 
-              <Chip
-                label={c.active === 1 ? "Active" : "Inactive"}
-                size="small"
-                sx={{
-                  backgroundColor:
-                    c.active === 1
-                      ? "var(--color-success)"
-                      : "var(--color-danger)",
-                  color: "var(--color-surface)",
-                  fontWeight: 600,
-                  borderRadius: "var(--radius-pill)",
-                  fontSize: 11,
-                }}
-              />
+              <Stack direction="row" spacing={0.5}>
+                <Chip
+                  label={c.active === 1 ? "Active" : "Inactive"}
+                  size="small"
+                  sx={{
+                    backgroundColor:
+                      c.active === 1
+                        ? "var(--color-success)"
+                        : "var(--color-danger)",
+                    color: "var(--color-surface)",
+                    fontWeight: 600,
+                    borderRadius: "var(--radius-pill)",
+                    fontSize: 11,
+                  }}
+                />
+                <IconButton 
+                  size="small" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRowClick(c.id);
+                  }}
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+              </Stack>
             </Stack>
 
-            <Typography
-              sx={{
-                fontSize: 12,
-                color: "var(--color-text-muted)",
-              }}
-            >
-              {c.phone} {c.email ? `· ${c.email}` : ""}
-            </Typography>
-
-            {c.startedYear && (
-              <Typography
+<Typography
                 sx={{
-                  fontSize: 11,
+                  fontSize: 12,
                   color: "var(--color-text-muted)",
                 }}
               >
-                Since {c.startedYear}
+                {c.phone01} {c.email ? `· ${c.email}` : ""}
               </Typography>
-            )}
+
+
           </Box>
         ))}
       </Stack>

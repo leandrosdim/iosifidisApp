@@ -113,7 +113,7 @@ export default function CustomersPage() {
   };
 
   const handleRowClick = (id) => {
-    router.push(`/cust/${id}`);
+    router.push(`/ui/cust/${id}`);
   };
 
   const handleAddCustomer = async () => {

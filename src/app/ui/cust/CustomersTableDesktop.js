@@ -22,6 +22,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import AddIcon from "@mui/icons-material/Add";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import CustomTextBox from "@/app/components/vTextBox";
 import { visuallyHidden } from "@mui/utils";
 
@@ -63,6 +64,12 @@ const headCells = [
     numeric: false,
     disablePadding: false,
     label: "Active",
+  },
+  {
+    id: "actions",
+    numeric: false,
+    disablePadding: false,
+    label: "Actions",
   },
 ];
 
@@ -124,7 +131,7 @@ function EnhancedTableHead(props) {
                   ? "12.5%"
                   : headCell.id === "email"
                   ? "25%"
-                  : headCell.id === "active"
+                  : headCell.id === "active" || headCell.id === "actions"
                   ? "10%"
                   : undefined,
             }}
@@ -382,7 +389,6 @@ export default function CustomersTableDesktop({
                     <TableCell padding="checkbox">
                       <Checkbox
                         color="primary"
-                        color="primary"
                         checked={isItemSelected}
                         inputProps={{
                           "aria-labelledby": labelId,
@@ -407,11 +413,24 @@ export default function CustomersTableDesktop({
                     >
                       {row.lastname}
                     </TableCell>
-                    <TableCell padding="normal" sx={{ width: "12.5%" }}>{row.phone01}</TableCell>
+<TableCell padding="normal" sx={{ width: "12.5%" }}>{row.phone01}</TableCell>
                     <TableCell padding="normal" sx={{ width: "12.5%" }}>{row.phone02}</TableCell>
                     <TableCell padding="normal" sx={{ width: "25%" }}>{row.email}</TableCell>
                     <TableCell align="center" padding="normal" sx={{ width: "10%" }}>
                       {row.active === 1 || row.active === true ? "Yes" : "No"}
+                    </TableCell>
+                    <TableCell align="center" padding="normal" sx={{ width: "10%" }}>
+                      <Tooltip title="View Customer">
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRowClick(row.id);
+                          }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 );
@@ -422,13 +441,13 @@ export default function CustomersTableDesktop({
                     height: (dense ? 33 : 53) * emptyRows,
                   }}
                 >
-                  <TableCell colSpan={6} />
+                  <TableCell colSpan={7} />
                 </TableRow>
               )}
               {!loading && rows.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     align="center"
                     sx={{
                       color: "var(--color-text-muted)",
